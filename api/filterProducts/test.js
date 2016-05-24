@@ -1,0 +1,197 @@
+exports.filter = function(req, res ){
+  console.log("calling filter fun in filter products file...");
+  var finalArr = [];
+  var promiseCount = 0;
+     console.log("req.query object : ",req.query);
+     console.log("object length: ",Object.keys(req.query).length);
+     // ----------------  start create the query string  -----------------
+     var queryArr = [];
+     for(var x in req.query){
+
+       queryArr.push({"name" : x, "value": req.query[x].split(",")});
+       console.log("qurey arr: ", queryArr);
+     }
+
+     // ----------------  end create the query string  -----------------
+     // ---------------- start iterating over the query string to match pattern ------------------
+
+     for(var i=0; i<queryArr.length; i++){
+       var p;
+       // ---------------- start fetching products ids from redis with pattern color  ------------------
+        if(queryArr[i].name == 'display_price'){ // ---------------- start fetching products ids from redis with pattern price  ------------------
+         console.log("------query string matched with price-----");
+         //var tmp = queryArr[i].value.split(",");
+
+        //  var start = parseInt(tmp[0]);
+        //  var end = parseInt(tmp[1]);
+
+         var start = parseInt(queryArr[i].value[0]);
+         var end = parseInt(queryArr[i].value[1]);
+
+         console.log("start: "+start+" end: "+end);
+         p = new Promise(function(resolve1, reject){
+           client.exists("product:Display_price:Index", function(err, reply){
+               if(err){
+                 console.log("product:Display_price:Index does not exists...");
+               }else{
+                 console.log("product:Display_price:Index exists...");
+                 client.ZRANGEBYLEX("product:Display_price:Index","["+start,"["+end, function(err, result){
+                         if(err){
+                           console.log("when retrieving price from product price index error: ",err);
+                         }else{
+                           var tempArr = [];
+                           for(var i=0;i<result.length; i++){
+                             var id = result[i].split(":");
+                             id = id[1];
+                             tempArr.push(id);
+                           }
+                           resolve1(tempArr);
+                       }
+
+                     });
+                   }
+           });// ---------------- end fetching products ids from redis with pattern price  ------------------
+         });
+
+       }else{
+         var indexName, indexPropertyName;
+         console.log("=======calling promises except display_price....=======");
+         p = new Promise(function(resolve, reject){
+           console.log("name: ",queryArr[i].name);
+           console.log("value: ",queryArr[i].value);
+          //console.log("-----querystring matched with: "+queryArr[i].name+" :----- ");
+
+          if(queryArr[i].value.length == 1){
+            indexName = queryArr[i].name.charAt(0).toUpperCase()+queryArr[i].name.substr(1).toLowerCase();
+            indexPropertyName = queryArr[i].value[0].trim().replace(/\s+/g, "").toLowerCase();
+            console.log("in case of query string value 1..");
+            console.log("index name",indexName);
+            console.log("index property name: ",indexPropertyName);
+            client.hvals("product:"+indexName+":Index:"+indexPropertyName, function(err, result){
+                if(err){
+                    console.log("error getting product: "+indexName+" :Index of: "+indexPropertyName+" ",err);
+                }
+                if(result){
+                    console.log("getting result for indexname: "+indexName+" and property name: ",indexPropertyName+" is sucessfull...");
+                    console.log("sucessfull result is: ",result);
+                    resolve(result);
+                }
+
+              });
+          }else{
+            var finalResultArr = [];
+            var p1,p1count=0;
+            console.log("in case query string value greater than 1..");
+            console.log("value of index property length: ",queryArr[i].value.length);
+            var len = queryArr[i].value.length;
+            for(var x=0; x<queryArr[i].value.length; x++){
+              indexName = queryArr[i].name.charAt(0).toUpperCase()+queryArr[i].name.substr(1).toLowerCase();
+              indexPropertyName = queryArr[i].value[x].trim().replace(/\s+/g, "").toLowerCase();
+              console.log("index name",indexName);
+              console.log("index property name: ",indexPropertyName);
+              p1 = new Promise(function(resolve, reject ){
+                client.hvals("product:"+indexName+":Index:"+indexPropertyName, function(err, result){
+                    if(err){
+                        console.log("error getting product: "+indexName+" :Index of: "+indexPropertyName+" ",err);
+                    }
+                    if(result){
+                        //console.log("result: ",result);
+                        console.log("getting result for indexname: "+indexName+" and property name: ",indexPropertyName+" is sucessfull...");
+                        console.log("sucessfull result is: ",result);
+                        // for(var y=0; y<result.length; y++){
+                        //   finalResultArr.push(result[y]);
+                        // }
+                        resolve(result);
+
+                    }
+
+                  });
+              });
+              p1.then(function(result1){
+                p1count++;
+                console.log("p1count: ",p1count);
+                console.log("value of index property length: "+len);
+                // console.log("value length: ",queryArr[i].value.length);
+
+                console.log("within nested promise result arr is: ",result1);
+                for(var y=0; y<result1.length; y++){
+                  if(finalResultArr.indexOf(result1[y]) == -1 ){
+                    console.log("push value: ",result1[y]);
+                    finalResultArr.push(result1[y]);
+                  }
+                }
+                if(p1count == len){
+                  console.log("-------------------place for resolve result------------------------");
+                  console.log("unique arr: ",finalResultArr);
+                  //resolve1(finalResultArr);
+                }
+
+              });
+
+
+            }
+
+
+
+          }
+
+         }); // ---------------- end fetching products ids from redis with pattern color  ------------------
+       }
+
+       // dealing with the intersection of filtered products ids
+       p.then(function(result){
+           console.log("promise count: ",promiseCount);
+           console.log("query length: ",queryArr.length);
+           console.log("result array : \n",result);
+           if(promiseCount == 0){
+             finalArr = result;
+           }else{
+             finalArr = finalArr.filter(function(item, index){
+              return result.indexOf(item) != -1;
+            });
+           }
+           promiseCount++;
+           console.log("final array: \n",finalArr);
+           console.log("------------------------");
+
+          if(promiseCount == queryArr.length){
+            console.log("promise ends....");
+            var finalProductsArr = [];
+
+            console.log("final sorted array with unique id is: \n",finalArr);
+            var i = 0;
+            var getValue = function (){
+              if(i<=finalArr.length){
+                client.get("products:"+finalArr[i], function(error, reply){
+                  if(error){
+                    console.log("getting error when retrieving the product by get products by id: ",err);
+                  }
+                  else{
+                    i++;
+                    getValue();
+                    finalProductsArr.push(JSON.parse(reply));
+
+                  }
+                })
+              }
+              else{
+                if(finalProductsArr.length == 0){
+
+                  res.json({"data": "NO PRODUCTS MATCHED THE FILTERATION ATTRIBUTES." });
+
+                }else{
+
+                  res.json({"data": finalProductsArr });
+
+                }
+              }
+            };
+            getValue();
+          }
+       }).catch(function( err ){
+          console.log("error in promise: ",err);
+       });
+     }
+     // ----------------- end iterating over the query string to match pattern ----------------------
+
+}
