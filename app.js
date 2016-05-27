@@ -31,6 +31,8 @@ require('./createRedisIndex/storeProducts');
 //require('./createRedisIndex/transparencyIndex');
 require('./createDynamicIndexing/dynamicIndexing');
 require('./createRedisIndex/syncRedis');
+require('./redisSearch/testRedisSearch');
+
 
 
 
