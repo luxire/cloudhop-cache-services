@@ -27,11 +27,12 @@ app.use('/users', users);
 require('./route')(app);
 //require('./createRedisIndex/weaveTypeIndex');
 require('./createRedisIndex/storeProducts');
+require('./createRedisIndex/productNameSearch');
+
 
 //require('./createRedisIndex/transparencyIndex');
 require('./createDynamicIndexing/dynamicIndexing');
-require('./createRedisIndex/syncRedis');
-require('./redisSearch/testRedisSearch');
+require('./createDynamicIndexing/createCollection');
 
 
 
