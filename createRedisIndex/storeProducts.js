@@ -18,62 +18,7 @@ client.on('connect', function(){
 })
 
 
- // var productsArr = [];
- // var token = '99da15069ef6b38952aa73d4550d88dd266fc302a4c8b058';
- // //console.log("url : ",env.spree.host+env.spree.products+'?token='+token);
- // console.log("calling all the products for creating the material index...");
- // client.keys("products:\*", function(err, reply){
- //   if(reply.length != 0){
- //
- //     // deleting all the products store in redis
- //     //console.log("reply: ",reply);
- //     console.log("products description is exists...");
- //    //  http.get(env.spree.host+env.spree.products+'?token='+token, function(err, response, body){
- //    //    if(err){
- //    //      console.log("error in getting all the products...");
- //    //    }
- //    //    if(response){
- //    //      productsArr = JSON.parse(body);
- //    //      for(var i=0; i<productsArr.length; i++){
- //    //        client.del("products:"+productsArr[i].id, function(err, res){
- //    //           if(err){
- //    //             console.log("error in deleting product... ");
- //    //           }
- //    //           if(res){
- //    //             console.log("sucessfully deletd product...");
- //    //           }
- //    //        });
- //    //      }
- //    //    }
- //    //  }); // end of deleting all the product in redis
- //   }else{
- //     console.log("does not exists products description...");
- //     console.log("creating the products index in redis...");
- //     http.get(env.spree.host+env.spree.products+'?token='+token, function(err, response, body){
- //       if(err){
- //         console.log("error in getting all the products: ");
- //       }
- //       if(response){
- //         console.log("getting all the products sucessfull...");
- //         productsArr = JSON.parse(body);
- //          for(var i=0; i<productsArr.length; i++){
- //            var id = productsArr[i].id;
- //            client.set("products:"+id,JSON.stringify(productsArr[i]), function(err, res){
- //                if(err){
- //                  console.log("in setting products index err: ",err);
- //                }
- //                if(res){
- //                  console.log("setting products sucessfully...");
- //                }
- //              });
- //          }
- //       }
- //     });
- //
- //   }
- // });
-
- var storeAllProductsInRedis = function(){
+ exports.storeAllProductsInRedis = function(){
    var pages;
    var flag = 0;
    var count = 0;
