@@ -12,9 +12,9 @@ var http = require('request');
 
 
 var client = redis_server.client;
-client.on('connect', function(){
-  console.log('Connected to redis server  in api / createDynamicIndexing / dynamicIndexing.js');
-})
+// client.on('connect', function(){
+//   console.log('Connected to redis server  in api / createDynamicIndexing / dynamicIndexing.js');
+// })
 
 
 
@@ -177,10 +177,343 @@ var ids = [1983,1853,1936];
 //createIndexById(ids);
 
 //----------------------------------------------------------------------------------------------------------------------------
+
+var createIndexByTaxons = function(){
+
+  console.log("***   create index by taxons is calling  ***");
+  var token = '99da15069ef6b38952aa73d4550d88dd266fc302a4c8b058';
+  var filterAttributes = ["product_color", "transparency", "display_price", "pattern", "product_weave_type", "suitable_climates", "wrinkle_resistance"];
+  var productsArr = [];
+  var promiseObj;
+  var totalPage;
+  var sucessfullCount = 0;
+  promiseObj = new Promise(function(resolve, reject ){
+    console.log("fetching the no of pages...");
+    http.get(env.spree.host+env.spree.products+'?token='+token, function(err, response, body){
+      if(err){
+        console.log("error in getting products from rails api...");
+      }
+      if(response){
+        //var parsedBody = JSON.parse(body).pages;
+        resolve(JSON.parse(body).pages);
+      }
+    });
+  });
+
+  promiseObj.then(function(result){
+    console.log("sucessfull promise result for page count is : ",result);
+    var pageByPage;
+    for(var i=0; i<result; i++){
+        var pageNo = i+1;
+        pageByPage = new Promise(function(resolve, reject ){
+          console.log("page by page count: ",i+1);
+          http.get(env.spree.host+env.spree.products+'?page='+pageNo+'&token='+token, function(err, response, body){
+            if(err){
+              console.log("error in getting products page by page...");
+            }
+            if(response){
+              resolve(JSON.parse(body).products);
+            }
+          });
+        });
+        pageByPage.then(function(result){
+          console.log("\n-------------------------------------------------------------------\n");
+          console.log("products length: ",result.length);
+          for(var i=0; i<result.length; i++ ){
+            sucessfullCount++;
+            console.log("product id: ",result[i].id);
+            console.log("permalink: ",result[i].taxons[0].permalink);
+            if(result[i].taxons.length == 0){
+                console.log("index can not be created...");
+                console.log("undefined taxons of product id: ",result[i].id);
+            }else{
+              var permalink = result[i].taxons[0].permalink.split("/");
+              console.log("product type: ",permalink[0]);
+              console.log("variants type: ",permalink[1]);
+              var productType = permalink[0].toLowerCase();
+              var productVariant = permalink[1].trim().replace(/\s+/g, "");
+
+
+              var price = parseFloat(result[i].display_price.substr(1,result[i].display_price.length));
+              console.log("price: ",price);
+              console.log("product:"+productType+":"+productVariant+":display_price:index:");
+               client.zadd("product:"+productType+":"+productVariant+":display_price:index",0, price+":"+result[i].id, function(err, res){
+                      if(err){
+                          console.log("error in creating product price index: ",err);
+                      }else{
+                          console.log("products price index created sucessfully...");
+                      }
+                });
+
+
+              // ----------------------logic of creating the index based on taxons--------------------------
+              for(var key in result[i].luxire_product){
+                //console.log("key: ",key);
+                if(result[i].luxire_product[key] == null){
+                    console.log("key occoured null value...");
+                }else{
+                for(var j=0; j<filterAttributes.length; j++){
+
+
+                  //------------------- start create indexing other than price and wrinkle resistance -----------------
+                  if(filterAttributes[j] == key && filterAttributes[j] != 'display_price' && filterAttributes[j] != 'wrinkle_resistance' ){
+                    //console.log("***** filterd attribute:  ",filterAttributes[j]+"  matched with key : "+key+"   ******");
+                    //console.log("key : ",key);
+                    //console.log("key name: \n"+key+"\ntypeof key: \n",typeof(key));
+                    var keyValue = result[i].luxire_product[key].split(",");
+                    //console.log("key value: ",keyValue);
+                    for(var k=0;k<keyValue.length; k++){
+
+                      var indexValue = keyValue[k].trim().replace(/\s+/g, "").toLowerCase();
+
+                      //var indexName = "product:"+key+":Index:"+indexValue;
+                      var id = result[i].id;
+                      //console.log("permalink: ",permalink);
+                      console.log("&&&&&& product:"+productType+":"+productVariant+":"+key+":index:"+indexValue);
+                      client.hmset("product:"+productType+":"+productVariant+":"+key+":index:"+indexValue, "product:"+id, id, function(err, res){
+                        if(err){
+                          console.log("error in creating products :\""+key+"\" index ");
+                        }else{
+                          console.log("index is created sucessfully...");
+                        }
+                      });
+                    }
+                  }
+                  //------------------- end create indexing other than price and wrinkle resistance -----------------
+                  if(filterAttributes[j] == "wrinkle_resistance" && filterAttributes[j] == key){
+                    console.log("create indexing functionality for wrinkle_resistance... ");
+                    var indexValue = result[i].luxire_product[key];
+                    console.log("index value: ",indexValue);
+                    //var indexName = "product:"+key+":Index:"+indexValue;
+                    console.log("&&&&&& product:"+productType+":"+productVariant+":"+key+":index:"+indexValue);
+                    client.hmset("product:"+productType+":"+productVariant+":"+key+":index:"+indexValue, "product:"+id, id, function(err, res){
+                      if(err){
+                        console.log("error in creating products :\""+key+"\" index ");
+                      }else{
+                        console.log("index is created sucessfully...");
+                      }
+                    });
+
+                  }
+                  //------------------- start create indexing other than price and wrinkle resistance -----------------
+
+
+                  //------------------- start create indexing other than price and wrinkle resistance -----------------
+
+                }
+              }// end of else which checking for null value validation
+              }
+            }
+
+            //-------------------------------*****************--------------------------------------------
+
+          }
+          console.log("\n-------------------------------------------------------------------\n");
+        }).catch(function(error){
+          console.log("error in promise: ",error);
+        });
+    }
+  }).catch(function(error){
+    console.log("error in promise: ",error);
+  });
+
+}
+//createIndexByTaxons();
+
+var createIndexByNestedColor = function(){
+  var token = '99da15069ef6b38952aa73d4550d88dd266fc302a4c8b058';
+  var productsArr = [];
+  var mainColor = ["red", "green", "grey", "yellow", "blue", "olive", "orange", "white", "violet", "mauve", "pink", "purple", "lavender", "peach", "black"];
+  var promiseObj, tmpColor;
+  var id, count = 0;
+
+  promiseObj = new Promise(function(resolve, reject ){
+    console.log("fetching the no of pages...");
+    http.get(env.spree.host+env.spree.products+'?token='+token, function(err, response, body){
+      if(err){
+        console.log("error in getting products from rails api...");
+      }
+      if(response){
+        //var parsedBody = JSON.parse(body).pages;
+        resolve(JSON.parse(body).pages);
+      }
+    });
+  });
+  promiseObj.then(function(result){
+    console.log("sucessfull promise result for page count is : ",result);
+    var pageByPage;
+    for(var i=0; i<result; i++){
+        var pageNo = i+1;
+        pageByPage = new Promise(function(resolve, reject ){
+          console.log("page by page count: ",i+1);
+          http.get(env.spree.host+env.spree.products+'?page='+pageNo+'&token='+token, function(err, response, body){
+            if(err){
+              console.log("error in getting products page by page...");
+            }
+            if(response){
+              resolve(JSON.parse(body).products);
+            }
+          });
+        });
+        pageByPage.then(function(result){
+          console.log("\n-------------------------------------------------------------------\n");
+          console.log("products length: ",result.length);
+          for(var i=0; i<result.length; i++ ){
+            console.log("product id: ",result[i].id);
+            console.log("permalink: ",result[i].taxons[0].permalink);
+            if(result[i].taxons.length == 0){
+                console.log("index can not be created...");
+                console.log("undefined taxons of product id: ",result[i].id);
+            }else{
+              var permalink = result[i].taxons[0].permalink.split("/");
+              console.log("product type: ",permalink[0]);
+              console.log("variants type: ",permalink[1]);
+              var productType = permalink[0].toLowerCase();
+              var productVariant = permalink[1].trim().replace(/\s+/g, "");
+              // ----------------------logic of creating the index based on taxons--------------------------
+
+                if(result[i].luxire_product["product_color"] == null){
+                    console.log("key occoured null value...");
+                }else{
+                  var tmpColorArr = result[i].luxire_product["product_color"].split(",");
+                  console.log("tmpColorArr: ",tmpColorArr);
+                  for(var k=0; k<tmpColorArr.length; k++){
+                    tmpColor = tmpColorArr[k].toLowerCase().trim().replace(/\s+/g, "");
+                    for(var l=0; l<mainColor.length; l++ ){
+                      if(tmpColor.indexOf(mainColor[l]) != -1){
+                         console.log("color: "+tmpColor+"  matched with maincolor: ",mainColor[l]);
+                         console.log("url: ","product:"+productType+":"+productVariant+":product_color:index:"+mainColor[l]);
+                         id = result[i].id;
+                         console.log("id : ",id );
+                         count++;
+                        client.hmset("product:"+productType+":"+productVariant+":product_color:index:"+mainColor[l], "product:"+id, id, function(err, res){
+                          if(err){
+                            console.log("error in creating color index ");
+                          }else{
+                            console.log("color index is created sucessfully... and count: ",count);
+                          }
+                        });
+
+                      }
+                    }
+                  }
+              }// end of else which checking for null value validation
+
+            }
+
+            //-------------------------------*****************--------------------------------------------
+
+          }
+          console.log("\n-------------------------------------------------------------------\n");
+        }).catch(function(error){
+          console.log("error in promise: ",error);
+        });
+    }
+  });
+}
+
+//createIndexByNestedColor();
+
+var createCollection = function(){
+  var token = '99da15069ef6b38952aa73d4550d88dd266fc302a4c8b058';
+  var productsArr = [];
+  var promiseObj, tmpColor;
+  var count = 0;
+  var id;
+
+  client.keys("products:\*", function(err, reply){
+    if(err){
+      console.log("error in redis..");
+    }
+    if(reply){
+      //console.log("reply:",reply);
+      console.log("reply length: ",reply.length);
+      var i=0;
+
+      //-------------------------------------------------------------------------------
+      var getValue = function (){
+        if(i < reply.length ){
+          var obj;
+          var idArr = reply[i].split(":");
+          console.log("id: ",idArr[1]);
+          id = idArr[1];
+
+          client.get("products:"+id, function(err, res){
+            if(err){
+              console.log("error in getting products from redis api...");
+            }else{
+            obj = JSON.parse(res);
+            if(obj.taxons.length == 0 ){
+              console.log("no permalink with the product: ",obj.id);
+            }else{
+              var permalink = obj.taxons[0].permalink.split("/");
+              var productType = permalink[0].toLowerCase();
+              var productVariant = permalink[1].toLowerCase();
+              console.log("sucess product id: "+obj.id);
+              console.log("collection key::  ","product:"+productType+":"+productVariant);
+              client.hmset("product:"+productType+":"+productVariant+":index", "product:"+obj.id, obj.id, function(err, res){
+                if(err){
+                  console.log("error in creating collection index ");
+                }else{
+                  count++;
+
+                  console.log("collection is created sucessfully... and count: ",count);
+                }
+              });
+            }
+
+            i++;
+            getValue();
+            }
+          });
+
+
+        }
+        else{
+
+            console.log("sucessfully stored all product description...");
+
+        }
+      };
+      getValue();
+
+      //-------------------------------------------------------------------------------
+
+      };
+
+
+    });
+
+}
+//createCollection();
+
+
+
 var deleteFilterAttributesIndexing = function(){
   console.log("calling the delete filter attributes indexing...");
   // ---------  deleting the indexing for price index ------
-  client.keys("product:*:*:*:index",function(err, result){
+  client.keys("product:*:*:display_price:index",function(err, result){
+    if(err){
+      console.log("error in redis: ",err);
+    }
+    if(result){
+      //console.log("result for price index keys: ", result);
+      for(var i=0; i<result.length; i++){
+        console.log("key: ",result[i]);
+        client.del(result[i], function(err, reply){
+          if(err){
+            console.log("error in deleting keys: ",err);
+          }
+          if(reply){
+            console.log(" key deleted sucessfully...");
+          }else{
+            console.log("key can not be deleted...");
+          }
+        })
+      }
+    }
+  });
+  client.keys("product:*:display_price:index",function(err, result){
     if(err){
       console.log("error in redis: ",err);
     }
@@ -224,9 +557,32 @@ var deleteFilterAttributesIndexing = function(){
       }
     }
   });
+  client.keys("product:*:*:index:*",function(err, res){
+    if(err){
+      console.log("error in redis: ",err);
+    }
+    if(res){
+      // console.log("result for another index keys: ", res);
+
+      for(var j=0; j<res.length; j++){
+        console.log("key: ",res[j]);
+        client.del(res[j], function(err, reply){
+          if(err){
+            console.log("error in deleting keys: ",err);
+          }
+          if(res){
+            console.log(" key deleted sucessfully...");
+          }else{
+            console.log("key can not be deleted...");
+          }
+        })
+      }
+    }
+  });
 
 
 }
+
 
 var createIndexByFilterAttributes = function(){
 
@@ -406,131 +762,217 @@ var createIndexByFilterAttributes = function(){
   });
 
 }
+
 //createIndexByFilterAttributes();
 
 
+var createIndexByCollectiopn = function(){
 
-// --------------------- create and delete collection indexing
+  console.log("***   create index by filtered attributes is calling  ***");
+  var token = '99da15069ef6b38952aa73d4550d88dd266fc302a4c8b058';
+  var filterAttributes = ["product_color", "transparency", "display_price", "pattern", "product_weave_type", "suitable_climates", "wrinkle_resistance"];
+  var mainColor = ["red", "green", "grey", "yellow", "blue", "olive", "orange", "white", "violet", "mauve", "pink", "purple", "lavender", "peach", "black", 'brown'];
+  var productsArr = [];
+  var promiseObj, tmpColor, count=0, productId;
+  var totalPage;
+  var sucessfullCount = 0;
 
+  deleteFilterAttributesIndexing(); // calling the functionality to delete all the filtered attributes from redis
+  promiseObj = new Promise(function(resolve, reject ){
+    console.log("fetching the no of pages...");
+    http.get(env.spree.host+env.spree.products+'?token='+token, function(err, response, body){
+      if(err){
+        console.log("error in getting products from rails api...");
+      }
+      if(response){
+        //var parsedBody = JSON.parse(body).pages;
+        resolve(JSON.parse(body).pages);
+      }
+    });
+  });
 
-// -----------------------------  delete collection functionality ----------------------------
-
-var deleteCollection = function(){
-  console.log("caling the delete collection function...");
-  client.keys("product:*:*:index", function(err, reply){
-    if(err){
-      console.log("error in redis deleting collection: ",err);
-    }else{
-        for(var i=0; i<reply.length; i++){
-          client.del(reply[i], function(err, res){
-            console.log("key :",reply[i]);
+  promiseObj.then(function(result){
+    console.log("sucessfull promise result for page count is : ",result);
+    var pageByPage;
+    for(var i=0; i<result; i++){
+        var pageNo = i+1;
+        pageByPage = new Promise(function(resolve, reject ){
+          console.log("page by page count: ",i+1);
+          http.get(env.spree.host+env.spree.products+'?page='+pageNo+'&token='+token, function(err, response, body){
             if(err){
-              console.log("error in redis when deleting the keys for clooection..");
+              console.log("error in getting products page by page...");
             }
-            if(res){
-              console.log("deleted sucessfully.. ");
-              console.log("after delete key result: ",res);
+            if(response){
+              resolve(JSON.parse(body).products);
             }
-          })
-        }
+          });
+        });
+        pageByPage.then(function(result){
+          console.log("\n-------------------------------------------------------------------\n");
+          console.log("products length: ",result.length);
+          for(var i=0; i<result.length; i++ ){
+            sucessfullCount++;
+            productId = result[i].id;
+            console.log("product id: ",result[i].id);
+            if(result[i].taxons.length == 0){
+                console.log("index can not be created...");
+                console.log("undefined taxons of product id: ",result[i].id);
+            }else{
+              console.log("permalink: ",result[i].taxons[0].permalink);
+              var permalink = result[i].taxons[0].permalink.split("/");
+              console.log("product type: ",permalink[0]);
+              console.log("variants type: ",permalink[1]);
+              var productType = permalink[0].toLowerCase();
+              var productVariant = permalink[1].trim().replace(/\s+/g, "");
+
+
+              var price = parseFloat(result[i].display_price.substr(1,result[i].display_price.length));
+              console.log("keys::    product:"+productType+":"+productVariant+":display_price:index");
+
+              client.zadd("product:"+productType+":display_price:index",0, price+":"+result[i].id, function(err, res){
+                     if(err){
+                         console.log("error in creating product price index: ",err);
+                     }else{
+                         console.log("products price index created sucessfully...");
+                     }
+               });
+
+
+               client.zadd("product:"+productType+":"+productVariant+":display_price:index",0, price+":"+result[i].id, function(err, res){
+                      if(err){
+                          console.log("error in creating product price index: ",err);
+                      }else{
+                          console.log("products price index created sucessfully...");
+                      }
+                });
+
+
+              // ----------------------logic of creating the index based on taxons--------------------------
+              for(var key in result[i].luxire_product){
+                //console.log("key: ",key);
+                if(result[i].luxire_product[key] == null){
+                    console.log("key occoured null value...");
+                }else{
+                for(var j=0; j<filterAttributes.length; j++){
+
+
+                  //------------------- start create indexing other than price and wrinkle resistance -----------------
+                  if(filterAttributes[j] == key && filterAttributes[j] != 'display_price' && filterAttributes[j] != 'wrinkle_resistance' && filterAttributes[j] != 'product_color' ){
+
+                    var keyValue = result[i].luxire_product[key].split(",");
+                    for(var k=0;k<keyValue.length; k++){
+
+                      var indexValue = keyValue[k].trim().replace(/\s+/g, "").toLowerCase();
+
+                      //var indexName = "product:"+key+":Index:"+indexValue;
+                      var id = result[i].id;
+                      console.log("permalink: ",permalink);
+                      console.log("&&&&&& product:"+productType+":"+key+":index:"+indexValue);
+
+                      client.hmset("product:"+productType+":"+key+":index:"+indexValue, "product:"+id, id, function(err, res){
+                        if(err){
+                          console.log("error in creating products :\""+key+"\" index ");
+                        }else{
+                          console.log("index is created sucessfully...");
+                        }
+                      });
+                      client.hmset("product:"+productType+":"+productVariant+":"+key+":index:"+indexValue, "product:"+id, id, function(err, res){
+                        if(err){
+                          console.log("error in creating products :\""+key+"\" index ");
+                        }else{
+                          console.log("index is created sucessfully...");
+                        }
+                      });
+                    }
+                  }
+                  //------------------- end create indexing other than price and wrinkle resistance -----------------
+                  if(filterAttributes[j] == "wrinkle_resistance" && filterAttributes[j] == key){
+                    console.log("create indexing functionality for wrinkle_resistance... ");
+                    var indexValue = result[i].luxire_product[key];
+                    console.log("index value: ",indexValue);
+                    //var indexName = "product:"+key+":Index:"+indexValue;
+                    console.log("&&&&&& product:"+productType+":"+productVariant+":"+key+":index:"+indexValue);
+                    client.hmset("product:"+productType+":"+key+":index:"+indexValue, "product:"+id, id, function(err, res){
+                      if(err){
+                        console.log("error in creating products :\""+key+"\" index ");
+                      }else{
+                        console.log("index is created sucessfully...");
+                      }
+                    });
+
+                    client.hmset("product:"+productType+":"+productVariant+":"+key+":index:"+indexValue, "product:"+id, id, function(err, res){
+                      if(err){
+                        console.log("error in creating products :\""+key+"\" index ");
+                      }else{
+                        console.log("index is created sucessfully...");
+                      }
+                    });
+
+                  }
+                  //------------------- start create indexing for nested product color -----------------
+
+                  if(filterAttributes[j] == "product_color" && filterAttributes[j] == key){
+                    console.log("create indexing functionality for product color... ");
+                    if(result[i].luxire_product["product_color"] == null){
+                        console.log("key occoured null value...");
+                    }else{
+                      var tmpColorArr = result[i].luxire_product["product_color"].split(",");
+                      console.log("tmpColorArr: ",tmpColorArr);
+                      for(var k=0; k<tmpColorArr.length; k++){
+                        tmpColor = tmpColorArr[k].toLowerCase().trim().replace(/\s+/g, "");
+                        for(var l=0; l<mainColor.length; l++ ){
+                          if(tmpColor.indexOf(mainColor[l]) != -1){
+                             console.log("color: "+tmpColor+"  matched with maincolor: ",mainColor[l]);
+                             console.log("url: ","product:"+productType+":"+productVariant+":product_color:index:"+mainColor[l]);
+                            //  id = result[i].id;
+                             console.log("product id : ",productId );
+                             count++;
+                             client.hmset("product:"+productType+":product_color:index:"+mainColor[l], "product:"+productId, productId, function(err, res){
+                               if(err){
+                                 console.log("error in creating color index ");
+                               }else{
+                                 console.log("color index is created sucessfully... and count: ",count);
+                               }
+                             });
+
+                            client.hmset("product:"+productType+":"+productVariant+":product_color:index:"+mainColor[l], "product:"+productId, productId, function(err, res){
+                              if(err){
+                                console.log("error in creating color index ");
+                              }else{
+                                console.log("color index is created sucessfully... and count: ",count);
+                              }
+                            });
+
+                          }
+                        }
+                      }
+                  }// end of else which checking for null value validation
+
+
+                  }
+
+
+                  //------------------- end create indexing for nested product color  -----------------
+
+
+
+                }
+              }// end of else which checking for null value validation
+              }
+            }
+
+            //-------------------------------*****************--------------------------------------------
+
+          }
+          console.log("\n-------------------------------------------------------------------\n");
+        }).catch(function(error){
+          console.log("error in promise: ",error);
+        });
     }
+  }).catch(function(error){
+    console.log("error in promise: ",error);
   });
 
 }
-//deleteCollection();
 
-
-var createCollection = function(){
-  var token = '99da15069ef6b38952aa73d4550d88dd266fc302a4c8b058';
-  var productsArr = [];
-  var promiseObj, tmpColor;
-  var count = 0;
-  var id;
-
-
-  deleteCollection(); // first delete the collection from redis server
-
-  client.keys("products:\*", function(err, reply){
-    if(err){
-      console.log("error in redis..");
-    }
-    if(reply){
-      //console.log("reply:",reply);
-      console.log("reply length: ",reply.length);
-      var i=0;
-
-      //-------------------------------------------------------------------------------
-      var getValue = function (){
-        if(i < reply.length ){
-          var obj;
-          var idArr = reply[i].split(":");
-          console.log("id: ",idArr[1]);
-          id = idArr[1];
-
-          client.get("products:"+id, function(err, res){
-            if(err){
-              console.log("error in getting products from redis api...");
-            }else{
-            obj = JSON.parse(res);
-            if(obj.taxons.length == 0 ){
-              console.log("no permalink with the product: ",obj.id);
-            }else{
-              var permalink = obj.taxons[0].permalink.split("/");
-              var productType = permalink[0].toLowerCase();
-              var productVariant = permalink[1].toLowerCase();
-              console.log("sucess product id: "+obj.id);
-              console.log("collection key::  ","product:"+productType+":"+productVariant);
-
-              // setting the product type indexing...
-              client.hmset("product:"+productType+":index", "product:"+obj.id, obj.id, function(err, res){
-                if(err){
-                  console.log("error in creating collection index ");
-                }else{
-                  count++;
-
-                  console.log("collection is created sucessfully... and count: ",count);
-                }
-              });
-
-              // creating the indexing collection wise...
-              client.hmset("product:"+productType+":"+productVariant+":index", "product:"+obj.id, obj.id, function(err, res){
-                if(err){
-                  console.log("error in creating collection index ");
-                }else{
-                  count++;
-
-                  console.log("collection is created sucessfully... and count: ",count);
-                }
-              });
-            }
-
-            i++;
-            getValue();
-            }
-          });
-
-
-        }
-        else{
-
-            console.log("sucessfully stored all product description...");
-
-        }
-      };
-      getValue();
-
-      //-------------------------------------------------------------------------------
-
-      };
-
-
-    });
-
-}
-//createCollection();
-
-// -------------------------- end of create collection indexing functionality -------------------
-
-
-
-//deleteFilterAttributesIndexing();
+//createIndexByCollectiopn();
