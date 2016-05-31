@@ -16,6 +16,7 @@ client.on('connect', function(){
 exports.filterByTaxon = function(req, res ){
 
   console.log("calling the customer side filteration functionality...");
+
   var finalArr = [];
   var promiseCount = 0;
   var pageNo = 1;
@@ -81,7 +82,7 @@ exports.filterByTaxon = function(req, res ){
                 });// ---------------- end fetching products ids from redis with pattern price  ------------------
               });
 
-            }else{
+            }else{//end of display price
               var indexName, indexPropertyName;
               console.log("=======calling promises except display_price....=======");
               p = new Promise(function(resolve, reject ){
