@@ -32,11 +32,15 @@ module.exports = function(app) {
     app.use('/api/redis/products', require('./api/productsSearch'));
     app.use('/api/redis/productDesc', require('./api/productDescription'));
     app.use('/api/redis/collection', require('./api/productsCollection'));
+    app.use('/api/redis/initialLoad', require('./api/initialLoadInRedis'));
+
 
     //app.use('/api/redis/products', require('./api/filterProducts'));
 
     // customer side filteration
     app.use('/api/redis/customer/products', require('./api/filterProducts/customer'));
+    app.use('/api/redis/admin/products', require('./api/filterProducts/admin'));
+
 
 
 
