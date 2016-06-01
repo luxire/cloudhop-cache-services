@@ -9,6 +9,7 @@ var redis =  require('redis');
 var redis_server = require("../route");
 var env = require("../config/constant");
 var http = require('request');
+var Promise = require("es6-promise").Promise;
 
 
 var client = redis_server.client;
@@ -101,11 +102,12 @@ var createCollection = function(){
             if(obj.taxons.length == 0 ){
               console.log("no permalink with the product: ",obj.id);
             }else{
-              if(obj.taxons[0].permalink == "gift-cards"){
-                  console.log("required no processing for gift card yet, hav to implement later");
-                  productTypeFlag = 0;
-                  productVariantFlag = 0;
-              }else{
+              // if(obj.taxons[0].permalink == "gift-cards"){
+              //     console.log("required no processing for gift card yet, hav to implement later");
+              //     var permalink = obj.taxons[0].permalink.split("/");
+              //     productTypeFlag = 0;
+              //     productVariantFlag = 0;
+              // }else{
                 console.log("sucess product id: "+obj.id);
                 var permalink = obj.taxons[0].permalink.split("/");
                 if(permalink.length == 1){
@@ -123,7 +125,7 @@ var createCollection = function(){
 
                 }
 
-              }
+              //}
 
               // setting the product type indexing...
               if(productTypeFlag == 1 ){
@@ -187,4 +189,4 @@ var createCollection = function(){
     });
 
 }
-//createCollection();
+// createCollection();
