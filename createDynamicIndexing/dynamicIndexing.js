@@ -9,6 +9,7 @@ var redis =  require('redis');
 var redis_server = require("../route");
 var env = require("../config/constant");
 var http = require('request');
+var Promise = require("es6-promise").Promise;
 
 
 var client = redis_server.client;
@@ -595,7 +596,7 @@ var createIndexByFilterAttributes = function(){
   var totalPage;
   var sucessfullCount = 0;
 
-  deleteFilterAttributesIndexing(); // calling the functionality to delete all the filtered attributes from redis
+  // deleteFilterAttributesIndexing(); // calling the functionality to delete all the filtered attributes from redis
   promiseObj = new Promise(function(resolve, reject ){
     console.log("fetching the no of pages...");
     http.get(env.spree.host+env.spree.products+'?token='+token, function(err, response, body){
@@ -763,7 +764,6 @@ var createIndexByFilterAttributes = function(){
 
 }
 
-//createIndexByFilterAttributes();
 
 
 var createIndexByCollectiopn = function(){
@@ -975,4 +975,5 @@ var createIndexByCollectiopn = function(){
 
 }
 
-//createIndexByCollectiopn();
+// createIndexByCollectiopn();
+// createIndexByFilterAttributes();
