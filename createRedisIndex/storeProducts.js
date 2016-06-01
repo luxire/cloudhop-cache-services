@@ -9,7 +9,7 @@ var redis =  require('redis');
 var redis_server = require("../route");
 var env = require("../config/constant");
 var http = require('request');
-
+var Promise = require("es6-promise").Promise;
 
 var productid,ProductDetails;
 var client = redis_server.client;
@@ -18,7 +18,7 @@ client.on('connect', function(){
 })
 
 
- exports.storeAllProductsInRedis = function(){
+ var storeAllProductsInRedis = function(){
    var pages;
    var flag = 0;
    var count = 0;
@@ -97,7 +97,7 @@ client.on('connect', function(){
 
  }
 
-//storeAllProductsInRedis();
+
 
 //--------------------------------------------------------------------------------------------------------------
 
@@ -277,4 +277,5 @@ var createProductDescInredis = function(){
     });
 }
 
- //createProductDescInredis();
+ createProductDescInredis();
+// storeAllProductsInRedis();
