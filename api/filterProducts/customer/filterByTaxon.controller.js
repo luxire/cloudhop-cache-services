@@ -13,6 +13,7 @@ client.on('connect', function(){
   console.log('Connected to redis server  in api/ filterProducts /filterByTaxon.controller.js');
 })
 
+/*Bug fix for filtering by price & sort by price*/
 exports.filterByTaxon = function(req, res ){
 
   console.log("calling the customer side filteration functionality...");
@@ -22,8 +23,8 @@ exports.filterByTaxon = function(req, res ){
   var pageNo = 1;
   var permalink;
   var maxValuePerPage = 15;
-  var pages,total_count,tmpPages,current_page_count;
-  var sortType = "default";
+  var pages,total_count,tmpPages,current_page_count=0;
+  var sortType = "asc";
      console.log("req.query object : ",req.query);
      //console.log("object length: ",Object.keys(req.query).length);
      // ----------------  start create the query object  -----------------
@@ -55,32 +56,47 @@ exports.filterByTaxon = function(req, res ){
               var start = parseInt(queryArr[i].value[0]);
               var end = parseInt(queryArr[i].value[1]);
 
-              console.log("price start: "+start+" price end: "+end);
-              console.log("permalink: ",permalink);
-              console.log("hash name:: "+"product:"+permalink[0]+":"+permalink[1]+":display_price:index");
-              p = new Promise(function(resolve, reject){
-                client.exists("product:"+permalink[0]+":"+permalink[1]+":display_price:index", function(err, reply){
-                    if(err){
-                      console.log("product:Display_price:Index does not exists...");
-                    }else{
-                      console.log("product:Display_price:Index exists...");
-                      client.ZRANGEBYLEX("product:"+permalink[0]+":"+permalink[1]+":display_price:index","["+start,"["+end, function(err, result){
-                              if(err){
-                                console.log("when retrieving price from product price index error: ",err);
-                              }else{
-                                var tempArr = [];
-                                for(var i=0;i<result.length; i++){
-                                  var id = result[i].split(":");
-                                  id = id[1];
-                                  tempArr.push(id);
-                                }
-                                resolve(tempArr);
-                            }
 
+                         //-----------------------------------------------------------------------------------------------------------
+                          p = new Promise(function(resolve, reject){
+                            console.log("calling price promise..");
+                            client.hvals("product:"+permalink[0]+":"+permalink[1]+":index", function(err, reply){
+                              if(err){
+                                console.log("error in redis: ",err);
+                              }
+                              if(reply){
+                                console.log("price reply length: ",reply.length);
+                                var tempArr = [];
+                                var t = 0;
+                                var getProductToComparePrice = function(){
+                                  if(t < reply.length){
+                                    client.get("products:"+reply[t], function(err, sucess){
+                                      if(err){
+                                        console.log("error in redis: ",err);
+                                      }
+                                      if(sucess){
+                                        t++;
+                                        var tmpObj = JSON.parse(sucess);
+                                        var price = parseFloat(tmpObj.display_price.substr(1,tmpObj.display_price.length));
+                                        if(price >= start && price <= end){
+                                          tempArr.push(tmpObj.id);
+                                        }
+                                        getProductToComparePrice();
+                                      }
+                                    });
+                                  }else{
+                                    console.log("price temparr: ",tempArr);
+                                    resolve(tempArr);
+                                  }
+                                }
+                                getProductToComparePrice();
+                              }
+                            });
                           });
-                        }
-                });// ---------------- end fetching products ids from redis with pattern price  ------------------
-              });
+
+                         //-----------------------------------------------------------------------------------------------------------
+
+
 
             }else{//end of display price
               var indexName, indexPropertyName;
@@ -163,127 +179,137 @@ exports.filterByTaxon = function(req, res ){
                //  console.log("result array : \n",result);
                 if(promiseCount == 0){
                   finalArr = result;
+
                 }else{
-                  finalArr = finalArr.filter(function(item, index){
-                   return result.indexOf(item) != -1;
-                 });
+                  console.log("finalarr is: ", finalArr);
+                  finalArr = finalArr.unique();
+                  console.log("finalarr is: ", finalArr);
+
+
+                //   finalArr = finalArr.filter(function(item, index){
+                //    return result.indexOf(item) != -1;
+                //  });
                 }
                 promiseCount++;
                //  console.log("final array: \n",finalArr);
                 console.log("------------------------");
 
                if(promiseCount == queryArr.length){
-                 // console.log("promise ends....");
-                 var finalProductsArr = [];
-
-                 console.log("final sorted array with unique id is: \n",finalArr);
-                 console.log("in query page no is: ",pageNo);
-                 console.log("in get value index start: ",(pageNo-1)*maxValuePerPage);
-                 console.log("in get value index end: ",(pageNo*maxValuePerPage)-1);
-                 var indexStart = (pageNo -1 ) * maxValuePerPage;
-                 var indexEnd = (pageNo * maxValuePerPage);
-                 tmpPages = parseInt(finalArr.length / maxValuePerPage);
-                 console.log("tmppages: ",tmpPages);
-                 total_count = finalArr.length;
-                 if(total_count <= maxValuePerPage){
-                   pages = 1;
-                 }else{
-                   if((total_count % maxValuePerPage) == 0){
-                     pages = tmpPages;
-                   }else{
-                     pages = tmpPages + 1;
-                   }
+                 //--------------------------------------------------------------------------
+                 if(finalArr.length == 0){
+                   res.json({"msg" : "NO PRODUCTS MATCHING."});
                  }
+                 else{
+                   var sortedProductArr = [];
+                   var finalProductsArr = [];
+                   var indexStart,indexEnd;
+                   //console.log("total count of collection: "+productType+"  is: "+res.length);
+                           indexStart = (pageNo - 1 ) * maxValuePerPage;
+                           indexEnd = (pageNo * maxValuePerPage);
+                           tmpPages = parseInt(finalArr.length / maxValuePerPage);
+                           console.log("tmppages: ",tmpPages);
+                           total_count = finalArr.length;
+                           console.log("collection length: ",total_count);
 
-
-                 var i = 0;
-                 var getValue = function (){
-                   if(/*i <= finalArr.length*/ indexStart <= indexEnd ){
-                     client.get("products:"+finalArr[indexStart], function(error, reply){ // finalArr[indexStart]
-                       if(error){
-                         console.log("getting error when retrieving the product by get products by id: ",err);
-                       }else{
-                           //i++;
-                           indexStart++;
-                           getValue();
-                           if(reply != null ){
-                             finalProductsArr.push(JSON.parse(reply));
+                           if(total_count <= maxValuePerPage){
+                             pages = 1;
+                           }else{
+                             if((total_count % maxValuePerPage) == 0){
+                               pages = tmpPages;
+                             }else{
+                               pages = tmpPages + 1;
+                               //indexEnd = indexStart + (total_count % maxValuePerPage);
+                             }
                            }
-                         //i++;
 
-                       }
-                     })
-                   }
-                   else{
-                     if(finalProductsArr.length == 0){
+                           //------------------------------------------------------------------------------------------------
+                           var x = 0;
+                           var getProduct = function(){
+                             if(x <= finalArr.length){
+                               client.get("products:"+finalArr[x], function(error, reply){
+                                 if(error){
+                                   console.log("getting error when retrieving the product from redis: ",err);
+                                 }else{
+                                     x++;
+                                     getProduct();
+                                     if(reply != null ){
+                                       //current_page_count++;
+                                       sortedProductArr.push(JSON.parse(reply));
+                                     }
+                                   //i++;
 
-                       res.json({"data": "NO PRODUCTS MATCHED THE FILTERATION ATTRIBUTES." });
+                                 }
+                               })
+                             }else{
+                               //console.log("sorted products arr: \n",sortedProductArr);
+                               console.log("sorttype: ",sortType);
+                               if(sortType == "asc" ){
+                                 console.log("calling asc sort type logic... ");
+                                 //current_page_count = finalProductsArr.length;
+                                //  current_page_count = indexEnd - indexStart;
 
-                     }else{
-                       // -------------------- start sorting functionality by price --------------------
+                                 sortedProductArr.sort(function(obj1, obj2){
+                                   var obj1Price =  parseFloat(obj1.display_price.substr(1,obj1.display_price.length));
+                                   var obj2Price =  parseFloat(obj2.display_price.substr(1,obj2.display_price.length));
 
-                       console.log("before sending the product arr to client");
-                       console.log("sorttype: "+sortType);
-                       if(sortType == "default"){
-                         console.log("caling sort type default...");
-                         current_page_count = finalProductsArr.length;
-                       }
-                       if(sortType == "asc" ){
-                         console.log("calling asc sort type logic... ");
-                         current_page_count = finalProductsArr.length;
+                                   return obj1Price - obj2Price ;
+                                 });
 
-                         finalProductsArr.sort(function(obj1, obj2){
-                               var obj1Price =  parseFloat(obj1.display_price.substr(1,obj1.display_price.length));
-                               var obj2Price =  parseFloat(obj2.display_price.substr(1,obj2.display_price.length));
+                                 var getSortedProduct = function(){
+                                   if(indexStart <= indexEnd){
+                                     indexStart++;
+                                     if(sortedProductArr[indexStart] != null){
+                                       current_page_count++;
+                                       finalProductsArr.push(sortedProductArr[indexStart]);
+                                     }
+                                     getSortedProduct();
+                                   }else{
+                                     res.json({"count": current_page_count,"total_count": total_count,"current_page": pageNo, "per_pages": maxValuePerPage ,"pages": pages,"products": finalProductsArr});
 
-                               return obj1Price - obj2Price ;
-                             });
-                             var tmparr =[];
-                             for(var l=0; l<finalProductsArr.length; l++){
-                               tmparr.push(finalProductsArr[l].id);
+                                   }
+                                 }
+                                 getSortedProduct();
+
+
+                               }
+                               if(sortType == "desc" ){
+                                 console.log("calling asc sort type logic... ");
+                                 //current_page_count = finalProductsArr.length;
+                                //  current_page_count = indexEnd - indexStart;
+
+                                 sortedProductArr.sort(function(obj1, obj2){
+                                   var obj1Price =  parseFloat(obj1.display_price.substr(1,obj1.display_price.length));
+                                   var obj2Price =  parseFloat(obj2.display_price.substr(1,obj2.display_price.length));
+
+                                   return obj2Price - obj1Price ;
+                                 });
+
+                                 var getSortedProduct = function(){
+                                   if(indexStart <= indexEnd){
+                                     indexStart++;
+                                     if(sortedProductArr[indexStart] != null){
+                                       current_page_count++;
+                                       finalProductsArr.push(sortedProductArr[indexStart]);
+                                     }
+                                     getSortedProduct();
+                                   }else{
+                                     res.json({"count": current_page_count,"total_count": total_count,"current_page": pageNo, "per_pages": maxValuePerPage ,"pages": pages,"products": finalProductsArr});
+
+                                   }
+                                 }
+                                 getSortedProduct();
+
+
+                               }
+
                              }
-                             console.log("after sorting final arr in ascending order: ",tmparr);
-                             console.log("count: ",finalProductsArr.length);
-
-                       }
-                       if(sortType == "desc"){
-                         console.log("calling desc sort type logic... ");
-                         current_page_count = finalProductsArr.length;
-
-                         finalProductsArr.sort(function(obj1, obj2){
-                               var obj1Price =  parseFloat(obj1.display_price.substr(1,obj1.display_price.length));
-                               var obj2Price =  parseFloat(obj2.display_price.substr(1,obj2.display_price.length));
-
-                               return obj2Price - obj1Price ;
-                             });
-                             var tmparr =[];
-                             for(var l=0; l<finalProductsArr.length; l++){
-                               tmparr.push(finalProductsArr[l].id);
-                             }
-                             console.log("after sorting final arr in descending order: ",tmparr);
-                             console.log("count: ",finalProductsArr.length);
-
-
-                       }
-
-
-                       // -------------------- end sorting functionality by price --------------------
-
-                       res.json({"count": current_page_count,"total_count": total_count,"current_page": pageNo, "per_pages": maxValuePerPage ,"pages": pages,"products": finalProductsArr});
-
-                     }
-                   }
-                 };
-                 // check condition for no products in the current page
-                 if(indexStart > finalArr.length ){
-                   var msg = "NO PRODUCTS FOUND IN THE CURRENT PAGE: "+pageNo;
-                   res.json({"data": msg });
-
-                 }else{
-                   getValue();
+                           }
+                           getProduct();
                  }
-                 //getValue();
-                 // check condition for no products in the current page
+
+
+                 //-------------------------------------------------------------------------
+
 
                }
             }).catch(function( err ){
