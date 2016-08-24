@@ -5,9 +5,9 @@ var router = express.Router();
 
 router.get('/:id', controller.productInRedisById);
 router.get('/', controller.productInRedisByIds);
-router.get('/delete/:id', controller.deleteProductInRedisById);
-router.get('/create/:id', controller.createProductInRedisById);
-router.get('/update/:id', controller.updateProductInRedisById);
+router.delete('/:id', controller.deleteProductInRedisById);
+router.post('/:id', controller.createProductInRedisById);
+router.put('/:id', controller.updateProductInRedisById);
 
 
 
