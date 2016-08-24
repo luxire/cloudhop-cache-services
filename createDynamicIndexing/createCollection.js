@@ -110,14 +110,14 @@ var createCollection = function(){
               // }else{
                 console.log("sucess product id: "+obj.id);
                 var permalink = obj.taxons[0].permalink.split("/");
-                if(permalink.length == 1){
+                if(permalink.length == 1){ //shirts
                     productTypeFlag = 1;
                     productVariantFlag = 0;
                     productType = permalink[0].toLowerCase();
                     console.log("collection key::  ","product:"+productType+":index");
 
                 }else{
-                    productVariantFlag = 1;
+                    productVariantFlag = 1;//shirts/casual
                     productTypeFlag = 0;
                     productType = permalink[0].toLowerCase();
                     productVariant = permalink[1].toLowerCase();
