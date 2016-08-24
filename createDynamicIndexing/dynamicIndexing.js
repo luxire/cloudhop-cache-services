@@ -208,7 +208,7 @@ var createIndexByTaxons = function(){
         var pageNo = i+1;
         pageByPage = new Promise(function(resolve, reject ){
           console.log("page by page count: ",i+1);
-          http.get(env.spree.host+env.spree.products+'?page='+pageNo+'&token='+token, function(err, response, body){
+          http.get(env.spree.host+env.spree.products+'?page='+pageNo, function(err, response, body){
             if(err){
               console.log("error in getting products page by page...");
             }
@@ -330,7 +330,7 @@ var createIndexByNestedColor = function(){
 
   promiseObj = new Promise(function(resolve, reject ){
     console.log("fetching the no of pages...");
-    http.get(env.spree.host+env.spree.products+'?token='+token, function(err, response, body){
+    http.get(env.spree.host+env.spree.products, function(err, response, body){
       if(err){
         console.log("error in getting products from rails api...");
       }
@@ -347,7 +347,7 @@ var createIndexByNestedColor = function(){
         var pageNo = i+1;
         pageByPage = new Promise(function(resolve, reject ){
           console.log("page by page count: ",i+1);
-          http.get(env.spree.host+env.spree.products+'?page='+pageNo+'&token='+token, function(err, response, body){
+          http.get(env.spree.host+env.spree.products+'?page='+pageNo, function(err, response, body){
             if(err){
               console.log("error in getting products page by page...");
             }
@@ -486,7 +486,7 @@ var createCollection = function(){
     });
 
 }
-//createCollection();
+
 
 
 
@@ -599,7 +599,7 @@ var createIndexByFilterAttributes = function(){
   // deleteFilterAttributesIndexing(); // calling the functionality to delete all the filtered attributes from redis
   promiseObj = new Promise(function(resolve, reject ){
     console.log("fetching the no of pages...");
-    http.get(env.spree.host+env.spree.products+'?token='+token, function(err, response, body){
+    http.get(env.spree.host+env.spree.products, function(err, response, body){
       if(err){
         console.log("error in getting products from rails api...");
       }
@@ -617,7 +617,7 @@ var createIndexByFilterAttributes = function(){
         var pageNo = i+1;
         pageByPage = new Promise(function(resolve, reject ){
           console.log("page by page count: ",i+1);
-          http.get(env.spree.host+env.spree.products+'?page='+pageNo+'&token='+token, function(err, response, body){
+          http.get(env.spree.host+env.spree.products+'?page='+pageNo, function(err, response, body){
             if(err){
               console.log("error in getting products page by page...");
             }
@@ -780,7 +780,7 @@ var createIndexByCollectiopn = function(){
   deleteFilterAttributesIndexing(); // calling the functionality to delete all the filtered attributes from redis
   promiseObj = new Promise(function(resolve, reject ){
     console.log("fetching the no of pages...");
-    http.get(env.spree.host+env.spree.products+'?token='+token, function(err, response, body){
+    http.get(env.spree.host+env.spree.products, function(err, response, body){
       if(err){
         console.log("error in getting products from rails api...");
       }
@@ -798,7 +798,7 @@ var createIndexByCollectiopn = function(){
         var pageNo = i+1;
         pageByPage = new Promise(function(resolve, reject ){
           console.log("page by page count: ",i+1);
-          http.get(env.spree.host+env.spree.products+'?page='+pageNo+'&token='+token, function(err, response, body){
+          http.get(env.spree.host+env.spree.products+'?page='+pageNo, function(err, response, body){
             if(err){
               console.log("error in getting products page by page...");
             }
@@ -977,3 +977,4 @@ var createIndexByCollectiopn = function(){
 
 // createIndexByCollectiopn();
 // createIndexByFilterAttributes();
+// createCollection();
