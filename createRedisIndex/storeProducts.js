@@ -9,25 +9,26 @@ var redis =  require('redis');
 var redis_server = require("../route");
 var env = require("../config/constant");
 var http = require('request');
+var product_search = require("../search/products");
 var Promise = require("es6-promise").Promise;
 
 var productid,ProductDetails;
 var client = redis_server.client;
 client.on('connect', function(){
   console.log('Connected to redis server  in api / createRedisIndex / storeProducts.js');
-})
+});
 
 
  var storeAllProductsInRedis = function(){
    var pages;
    var flag = 0;
    var count = 0;
-   var token = '99da15069ef6b38952aa73d4550d88dd266fc302a4c8b058';
+  //  var token = '99da15069ef6b38952aa73d4550d88dd266fc302a4c8b058';
    var p;
    var pageCount;
    p = new Promise(function(resolve, reject ){
      console.log("retreiving the no of pages...");
-     http.get(env.spree.host+env.spree.products+'?token='+token, function(err, response, body){
+     http.get(env.spree.host+env.spree.products, function(err, response, body){
        if(err){
          console.log("error in getting all the products...");
        }
@@ -46,7 +47,7 @@ client.on('connect', function(){
        pageCount = i+1;
        pageByPage = new Promise(function(resolve, reject ){
          console.log("url: "+env.spree.host+env.spree.products+'?page='+pageCount);
-         http.get(env.spree.host+env.spree.products+'?page='+pageCount+'&token='+token, function(err, response, body){
+         http.get(env.spree.host+env.spree.products+'?page='+pageCount, function(err, response, body){
            if(err){
              console.log("error in getting products page by page...");
            }
@@ -67,10 +68,11 @@ client.on('connect', function(){
            //productId = res[j].id;
            //productDetails = res[j];
            //count++;
-           console.log("product id: ",res[j].id);
+          //  console.log("product id: ",res[j].id);
            //console.log("count: "+count);
            //pid = res[j].id;
           // pdetails = res[j];
+           product_search.createIndex(res[j]); // create index for search
            flag = 0;
            client.set("products:"+res[j].id, JSON.stringify(res[j]), function(err, reply ){
              //console.log("within set function id :",pid);
@@ -78,7 +80,7 @@ client.on('connect', function(){
                  console.log("error in storing products in redis..",err);
               }else{
                  count++;
-                 console.log("product created sucessfully in redis with id: ",pid);
+                 console.log("product created sucessfully in redis ");
                  console.log("total count: ",count);
               }
           });
@@ -139,7 +141,7 @@ var setProductAndCreateIndexById = function ( id ){
   var token = '99da15069ef6b38952aa73d4550d88dd266fc302a4c8b058';
   var p;
   p = new Promise(function(resolve, reject ){
-    http.get(env.spree.host+env.spree.products+'/'+id+'?token='+token, function(err, response, body){
+    http.get(env.spree.host+env.spree.products+'/'+id, function(err, response, body){
       if(err){
         console.log("error in getting products from rails server...");
       }
@@ -277,5 +279,5 @@ var createProductDescInredis = function(){
     });
 }
 
- createProductDescInredis();
-// storeAllProductsInRedis();
+// createProductDescInredis();
+//  storeAllProductsInRedis();
