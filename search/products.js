@@ -1,6 +1,8 @@
 'use strict';
 var redis = require('redis');
 var client = redis.createClient();
+var colors = require('./colors');
+console.log('colors', colors)
 client.on('connect', function(){
    console.log('Connected to redis:for:search');
  });
@@ -64,6 +66,15 @@ client.on('connect', function(){
      }
    };
  };
+ function process_color_to_store(product, attribute){
+   var color_string = "";
+   var product_colors = product.luxire_product.product_color.split(',');
+   for(var i=0;i<product_colors.length;i++){
+     color_string = color_string + colors.variants[product_colors[i].toLowerCase().trim()] + ":";
+     console.log('creating color var ', product_colors[i].toLowerCase().trim());
+   }
+   return color_string;
+ }
  
  
  
@@ -71,7 +82,13 @@ client.on('connect', function(){
    
    var key_to_store = "";
    for(var key in search_properties.filter){
-     key_to_store += key+"::" + process_value_to_store(product, search_properties.filter[key]) + ":-:";
+     if(key !== 'color'){
+       key_to_store += key+"::" + process_value_to_store(product, search_properties.filter[key]) + ":-:";
+     }
+     else{
+       key_to_store += key+"::" + process_color_to_store(product, search_properties.filter[key]) + ":-:";
+     }
+     
    };
   //  console.log('key to store', key_to_store);
     client.zadd("productSearch", product.id, key_to_store, function(err, res){

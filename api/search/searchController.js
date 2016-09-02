@@ -5,7 +5,15 @@ var lodash = require('lodash');
 var MyEventEmitter = require('events').EventEmitter;
 var myEventEmitter = new MyEventEmitter();
 var input_params = ['id', 'name', 'taxonomy', 'color', 'weave_type', 'pattern', 'transparency', 'wrinkle_resistance', 'season', 'brand'];
-
+var color_mapping = {
+    'white': "white,cream,yellow",
+    'pink': "pink,purple,violet",
+    'blue': "blue,navy",
+    'black': "grey,black",
+    'brown': "brown,tan",
+    'green': "green",
+    'orange': "orange,red"
+}
 
 
 
@@ -16,8 +24,9 @@ exports.products = function(req, res){
     var temp2 = [];
     var id = "";
     var query_string = "";
-    
+
     var process_input_request = function(key, val){
+        console.log('inp request', key, val);
         if((val == null) || (val == undefined)){
         val = '';
         }
@@ -37,6 +46,20 @@ exports.products = function(req, res){
     var request_string = "";
     for(var i in input_params){
         if(request[input_params[i]]){
+            if(input_params[i] === 'color'){
+                var required_colors = request[input_params[i]].split(',');                
+                request[input_params[i]] = "";
+                for(var color in required_colors){
+                    if(color< required_colors.length-1){
+                        request[input_params[i]] = request[input_params[i]] + color_mapping[required_colors[color]] + ',';
+                    }
+                    else{
+                        request[input_params[i]] = request[input_params[i]] + color_mapping[required_colors[color]] ;
+                    }
+                }
+            }
+            console.log('colors to search', process_input_request(input_params[i], request[input_params[i]]));
+            console.log('multi scan', multiple_scan);
             request_string += input_params[i] + "::*" + process_input_request(input_params[i], request[input_params[i]]) + "*:-:";
         }
         else{
@@ -46,7 +69,7 @@ exports.products = function(req, res){
     console.log('req string', request_string);
 
     var currency = request.currency ? request.currency.toUpperCase() : "USD";
-    var page = parseInt(request["page"]) || 1; 
+    var page = parseInt(request["page"]) || 1;
     var price_start = parseInt(request["price_start"]) || 0;
     var price_end = parseInt(request["price_end"]) || 10000000000000;
     var sort = request.sort || "asc";
@@ -70,18 +93,18 @@ exports.products = function(req, res){
     var products_union = [];
     function capitalizeFirstLetter(string) {
         return string.charAt(0).toUpperCase() + string.slice(1);
-    };   
+    };
     var fetchProduct = function (index, productIds, products){
         if(index < productIds.length){
             client.get("products:"+productIds[index], function(error, reply){//productDescription to have product type
-                var taxon = ""; 
+                var taxon = "";
                 if(error){
                     console.log("getting error when retrieving the product by get products by id: ",err);
                 }else{
                     index++;
                     if(reply != null ){
                         reply = JSON.parse(reply);
-                        products.push(reply);                        
+                        products.push(reply);
                     }
                     fetchProduct(index, productIds, products);
                 }
@@ -91,7 +114,7 @@ exports.products = function(req, res){
            myEventEmitter.emit('fetched-products', products);
         }
     };
-    
+
     var compute_response = function(redis_res){
         var productIds = [];
         var products = [];
@@ -103,24 +126,24 @@ exports.products = function(req, res){
             productIds.push(redis_res[i]);
             response_object.count++;
         };
-        
+
         if(productIds.length){
             myEventEmitter.once('fetched-products',function(products){
                 response_object.products = products;
                 response_object.taxonomies = taxonomies;
-                console.log('response', response_object.length);
+                // console.log('response', response_object.length);
 
                 response.json(response_object);
             });
             fetchProduct(0, productIds, products);
         }
         else{
-            console.log('response', response_object);
+            // console.log('response', response_object);
             response.json(response_object);
         }
     };
     function get_val_from_product_string(product_string, key){
-       return product_string.split(key+"::")[1].split(":-:")[0].split("*").join(""); 
+       return product_string.split(key+"::")[1].split(":-:")[0].split("*").join("");
     };
     function set_val_from_product_string(product_string, key, val){
         var str_split = product_string.split(key+"::");
@@ -133,15 +156,15 @@ exports.products = function(req, res){
             if(product_split_arr[m]){
                 taxon =  capitalizeFirstLetter(product_split_arr[m].split('/')[0]);
                 if(taxonomies[taxon]){
-                taxonomies[taxon]++;  
+                taxonomies[taxon]++;
                 }
                 else{
-                    taxonomies[taxon] = 1;  
+                    taxonomies[taxon] = 1;
                 }
             }
         };
     };
-    
+
     if(sort === "asc"){
         client.zrangebyscore("productPrice."+currency+".index", price_start, price_end, function(err, res){
             if(res && res.length){
@@ -161,7 +184,7 @@ exports.products = function(req, res){
         intersection_result = output_multi_arr["sort"];
         delete output_multi_arr["sort"];
         for(var property in output_multi_arr){
-            intersection_result = lodash.intersection(intersection_result, output_multi_arr[property])                        
+            intersection_result = lodash.intersection(intersection_result, output_multi_arr[property])
         }
         return intersection_result;
     };
@@ -178,14 +201,14 @@ exports.products = function(req, res){
                 delete  multiple_scan[attr];
             }
             if(!Object.keys(multiple_scan).length){
-                console.log('computed array for intersection', output_multi_arr); 
+                // console.log('computed array for intersection', output_multi_arr);
                 compute_response(compute_intersection(output_multi_arr));
-            }                        
+            }
         });
     }
-    
-    
-    
+
+
+
     client.zscan("productSearch", "0", "count", "10000000", "match", request_string, function(err, res){
         if(err){
             console.log("err", err);
@@ -194,7 +217,7 @@ exports.products = function(req, res){
             if(res && res[1].length){
                 for(var j=0;j<res[1].length;j=j+2){
                     if(request["name"] && request["name"] !== "*"){//counting taxonomies only for product search
-                        count_taxonomies(res[1][j]);    
+                        count_taxonomies(res[1][j]);
                     }
                     products_union.push(get_val_from_product_string(res[1][j], "id"));
                 };
@@ -206,13 +229,13 @@ exports.products = function(req, res){
                     for(var prop in multiple_scan[i]){
                         query_string = set_val_from_product_string(request_string, i, multiple_scan[i][prop]);
                         compute_multi_scan(i, multiple_scan[i][prop], query_string);
-                    }                                                
+                    }
                 }
             }
             else{
                 compute_response(lodash.intersection(output_multi_arr["sort"],products_union));
             }
-    
+
         }
     });
 
