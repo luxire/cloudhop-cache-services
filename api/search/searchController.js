@@ -4,7 +4,7 @@ var client = redis.createClient();
 var lodash = require('lodash');
 var MyEventEmitter = require('events').EventEmitter;
 var myEventEmitter = new MyEventEmitter();
-var input_params = ['id', 'name', 'taxonomy', 'color', 'weave_type', 'pattern', 'transparency', 'wrinkle_resistance', 'season', 'brand'];
+var input_params = ['id', 'name', 'taxonomy', 'color', 'weave_type', 'pattern', 'transparency', 'wrinkle_resistance', 'season', 'brand', 'no_of_color'];
 var color_mapping = {
     'white': "white,cream,yellow",
     'pink': "pink,purple,violet",
@@ -26,7 +26,6 @@ exports.products = function(req, res){
     var query_string = "";
 
     var process_input_request = function(key, val){
-        console.log('inp request', key, val);
         if((val == null) || (val == undefined)){
         val = '';
         }
@@ -58,8 +57,17 @@ exports.products = function(req, res){
                     }
                 }
             }
-            console.log('colors to search', process_input_request(input_params[i], request[input_params[i]]));
-            console.log('multi scan', multiple_scan);
+            else if(input_params[i] === 'no_of_color' && request[input_params[i]].indexOf('+') !== -1){
+                var required_no = request[input_params[i]].split(',');
+                request[input_params[i]] = "";
+                for (var count in required_no){
+                    if(required_no[count].indexOf('+') != -1){
+                        required_no.splice(count, 1);
+                        required_no = required_no.concat([4,5,6,7,8,9,10]);
+                    }
+                }
+                request[input_params[i]] = required_no.join(',');
+            }            
             request_string += input_params[i] + "::*" + process_input_request(input_params[i], request[input_params[i]]) + "*:-:";
         }
         else{

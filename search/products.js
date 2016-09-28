@@ -27,7 +27,8 @@ client.on('connect', function(){
      'transparency': 'luxire_product.transparency',
      'wrinkle_resistance': 'luxire_product.wrinkle_resistance',
      'season': 'luxire_product.suitable_climates',
-     'brand': 'luxire_product.mill'     
+     'brand': 'luxire_product.mill',
+     'no_of_color': 'luxire_product.no_of_color'    
    },
    range: {
      
