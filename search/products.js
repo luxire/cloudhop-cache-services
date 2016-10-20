@@ -98,6 +98,7 @@ client.on('connect', function(){
       }      
     });
     function store_currency(curr, val, id){
+      console.log('store currency', curr, val, id)
       client.zadd("productPrice."+curr+'.index', parseFloat(val.split(",").join("")).toFixed(2), id, function(err, res){
         console.log("val to display", curr, val.split(",").join(""));
         if(err){
@@ -106,6 +107,7 @@ client.on('connect', function(){
       });
     };
     for(var curr in product.master.prices){
+      console.log('curr', curr, 'val', product.master.prices[curr])
       switch(curr){
         case "INR" : store_currency("INR", product.master.prices["INR"].split("\u20B9")[1], product.id);
                      break;
@@ -124,6 +126,10 @@ client.on('connect', function(){
         case "SEK" : store_currency("SEK", product.master.prices["SEK"].split(" kr")[0], product.id);
                      break;
         case "CHF" : store_currency("CHF", product.master.prices["CHF"].split("CHF")[1], product.id);
+                     break;
+        case "GBP" : store_currency("GBP", product.master.prices["GBP"].split("\u00a3")[1], product.id);
+                     break;
+        case "CAD" : store_currency("CAD", product.master.prices["CAD"].split("$")[1], product.id);
                      break;
         
       }
