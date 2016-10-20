@@ -43,6 +43,7 @@ module.exports = function(app) {
     // app.use('/api/redis/admin/products', require('./api/filterProducts/admin'));
 
     app.use('/api/redis/customer/search', require('./api/search'));
+    app.use('/api/redis/v1/products', require('./api/product'))
 
 
 
