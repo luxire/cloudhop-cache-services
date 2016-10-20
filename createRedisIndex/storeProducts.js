@@ -1,3 +1,4 @@
+
 'use strict';
 //var _ = require('lodash');
 var http = require('request');
@@ -14,9 +15,38 @@ var Promise = require("es6-promise").Promise;
 
 var productid,ProductDetails;
 var client = redis_server.client;
+var async = require("async");
 client.on('connect', function(){
   console.log('Connected to redis server  in api / createRedisIndex / storeProducts.js');
 });
+
+var i = 0;
+
+var storeProductDescription = function(id, slug){
+  console.log('id', id, 'slug', slug);
+  http.get({uri: env.spree.host+env.spree.products+"/"+id, timeout: 6000000, pool: {maxSockets: Infinity}}, function(err, response, body){
+    if(err){
+      console.log("error in getting products from rails api...", err);
+    }else{
+      console.log("count: ",i++, "id", id, body);
+      client.set("productDescription:"+id, body,function(err, res){
+        if(err){
+          console.log("error in setting the product desc in redis...");
+        }else{
+          console.log("product desc created sucessfully...");
+        }
+      });
+      client.set("productDescription:"+slug, body,function(err, res){
+        if(err){
+          console.log("error in setting the product desc in redis...");
+        }else{
+          console.log("product desc created sucessfully...");
+        }
+      });
+      
+    }
+  });
+};
 
 
  var storeAllProductsInRedis = function(){
@@ -30,7 +60,7 @@ client.on('connect', function(){
      console.log("retreiving the no of pages...");
      http.get(env.spree.host+env.spree.products, function(err, response, body){
        if(err){
-         console.log("error in getting all the products...");
+         console.log("error in getting all the products...", err);
        }
        if(response){
          //pages = JSON.parse(body).pages;
@@ -52,7 +82,7 @@ client.on('connect', function(){
              console.log("error in getting products page by page...");
            }
            if(response){
-             //console.log("body: ",body);
+             console.log("body: ",body);
              resolve(JSON.parse(body).products);
            }
          });
@@ -73,6 +103,7 @@ client.on('connect', function(){
            //pid = res[j].id;
           // pdetails = res[j];
            product_search.createIndex(res[j]); // create index for search
+          //  storeProductDescription(res[j].id, res[j].slug);
            flag = 0;
            client.set("products:"+res[j].id, JSON.stringify(res[j]), function(err, reply ){
              //console.log("within set function id :",pid);
@@ -221,58 +252,53 @@ var setProductAndCreateIndexById = function ( id ){
 
 
 var createProductDescInredis = function(){
-  var token = '99da15069ef6b38952aa73d4550d88dd266fc302a4c8b058';
   var productsArr = [];
   var promiseObj, tmpColor;
   var count = 0;
   var id;
 
-  client.keys("products:\*", function(err, reply){
+  client.scan("0", "count", "100000", "match", "products:*", function(err, reply){
     if(err){
       console.log("error in redis..");
     }
     if(reply){
       //console.log("reply:",reply);
-      console.log("reply length: ",reply.length);
+      console.log("reply length: ",reply[1]);
       var i=0;
-
+      var index = 0;
       //-------------------------------------------------------------------------------
-      var getValue = function (){
-        if(i < reply.length ){
-          var idArr = reply[i].split(":");
-          console.log("id: ",idArr[1]);
+      var getValue = function (index, reply){
+        console.log('index', index);
+          var idArr = reply[index].split(":");
           id = idArr[1];
-
-          http.get(env.spree.host+env.spree.products+"/"+id+'?token='+token, function(err, response, body){
+                    console.log("id: ",id);
+          http.get(env.spree.host+env.spree.products+"/"+id, function(err, response, body){
             if(err){
-              console.log("error in getting products from rails api...");
+              console.log("error in getting products from rails api...", err);
             }else{
-            console.log("sucess product id: ",JSON.parse(body).id);
-            console.log("count: ",i);
-            client.set("productDescription:"+id, body,function(err, res){
+            console.log("count: ",i++, "id", body);
+            client.set("productDescription:"+JSON.parse(body).id+":"+JSON.parse(body).slug, body,function(err, res){
               if(err){
                 console.log("error in setting the product desc in redis...");
               }else{
                 console.log("product desc created sucessfully...");
               }
             });
-            i++;
-            getValue();
             }
           });
-
-
+       
+      };
+      getValue(0, reply[1]);
+      var interval = setInterval(function(){
+        if(index<= reply[1].length-1){
+                  getValue(index++, reply[1]);
         }
         else{
-
-            console.log("sucessfully stored all product description...");
-
+          console.log('product load complete');
+          clearInterval(interval);
         }
-      };
-      getValue();
-
-      //-------------------------------------------------------------------------------
-
+      }, 750);
+      
       };
 
 
@@ -280,4 +306,4 @@ var createProductDescInredis = function(){
 }
 
 // createProductDescInredis();
-//  storeAllProductsInRedis();
+  // storeAllProductsInRedis();
