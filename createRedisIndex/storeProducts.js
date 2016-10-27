@@ -1,4 +1,3 @@
-
 'use strict';
 //var _ = require('lodash');
 var http = require('request');
@@ -15,7 +14,6 @@ var Promise = require("es6-promise").Promise;
 
 var productid,ProductDetails;
 var client = redis_server.client;
-var async = require("async");
 client.on('connect', function(){
   console.log('Connected to redis server  in api / createRedisIndex / storeProducts.js');
 });
@@ -297,7 +295,7 @@ var createProductDescInredis = function(){
           console.log('product load complete');
           clearInterval(interval);
         }
-      }, 750);
+      }, 1000);
       
       };
 
@@ -305,5 +303,5 @@ var createProductDescInredis = function(){
     });
 }
 
-// createProductDescInredis();
-  // storeAllProductsInRedis();
+//createProductDescInredis();
+//   storeAllProductsInRedis();
