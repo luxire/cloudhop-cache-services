@@ -18,6 +18,7 @@ var color_mapping = {
 
 
 exports.products = function(req, res){
+    console.log('req body', req.body);
     var multiple_scan = {};
     var output_multi_arr = {};
     var temp1 = [];
@@ -33,7 +34,7 @@ exports.products = function(req, res){
             val = val.toString();
         }
         if(val.indexOf(',') !== -1){
-            multiple_scan[key] = val.split(',');
+            multiple_scan[key] = val.toLowerCase().split(',');
             val = "*";
         }
         return val.toLowerCase().trim();
@@ -216,7 +217,6 @@ exports.products = function(req, res){
     }
 
 
-
     client.zscan("productSearch", "0", "count", "10000000", "match", request_string, function(err, res){
         if(err){
             console.log("err", err);
@@ -231,6 +231,7 @@ exports.products = function(req, res){
                 };
             }
            if(Object.keys(multiple_scan).length){
+               console.log('multi scan', multiple_scan);
                 output_multi_arr["base"] = products_union;
                 for(var i in multiple_scan){
                     output_multi_arr[i] = [];
