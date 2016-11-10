@@ -3,7 +3,7 @@ var redis =  require('redis');
 var client = redis.createClient();
 var lodash = require('lodash');
 var MyEventEmitter = require('events').EventEmitter;
-var myEventEmitter = new MyEventEmitter();
+
 var input_params = ['id', 'name', 'taxonomy', 'color', 'weave_type', 'pattern', 'transparency', 'wrinkle_resistance', 'season', 'brand', 'no_of_color'];
 var color_mapping = {
     'white': "white,cream,yellow",
@@ -18,6 +18,7 @@ var color_mapping = {
 
 
 exports.products = function(req, res){
+    var myEventEmitter = new MyEventEmitter();
     console.log('req body', req.body);
     var multiple_scan = {};
     var output_multi_arr = {};
@@ -42,7 +43,6 @@ exports.products = function(req, res){
 
     var request   = req.body;
     multiple_scan = {};
-    console.log('req body', req.body);
     var request_string = "";
     for(var i in input_params){
         if(request[input_params[i]]){
