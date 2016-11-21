@@ -2,7 +2,6 @@
 var redis = require('redis');
 var client = redis.createClient();
 var colors = require('./colors');
-console.log('colors', colors)
 client.on('connect', function(){
    console.log('Connected to redis:for:search');
  });
@@ -53,10 +52,10 @@ client.on('connect', function(){
        var taxon_string = "";
        for(var i=0; i< product[properties[0]].length; i++){
          if(i != product[properties[0]].length-1){
-            taxon_string += product[properties[0]][i][properties[1]];
+            taxon_string += product[properties[0]][i][properties[1]] + ":";
          }
          else{
-            taxon_string += product[properties[0]][i][properties[1]] + ":";
+            taxon_string += product[properties[0]][i][properties[1]];
          }
        }
        return format_to_store(taxon_string);  //handling taxonomies
@@ -65,21 +64,26 @@ client.on('connect', function(){
      else if(product[properties[0]] instanceof Object){
        return format_to_store(product[properties[0]][properties[1]]);
      }
+     
    };
  };
  function process_color_to_store(product, attribute){
    var color_string = "";
-   var product_colors = product.luxire_product.product_color.split(',');
-   for(var i=0;i<product_colors.length;i++){
-     color_string = color_string + colors.variants[product_colors[i].toLowerCase().trim()] + ":";
-     console.log('creating color var ', product_colors[i].toLowerCase().trim());
+   if(product.luxire_product && product.luxire_product.product_color){
+     var product_colors = product.luxire_product.product_color.split(',');
+      for(var i=0;i<product_colors.length;i++){
+        color_string = color_string + colors.variants[product_colors[i].toLowerCase().trim()] + ":";
+        //  console.log('creating color var ', product_colors[i].toLowerCase().trim());
+      }
+      return color_string;
    }
-   return color_string;
+   
  }
  
  
- 
+ var productCount = 0;
  exports.createIndex = function(product){
+   console.log('product count', ++productCount, product.id);
    
    var key_to_store = "";
    for(var key in search_properties.filter){
@@ -98,16 +102,15 @@ client.on('connect', function(){
       }      
     });
     function store_currency(curr, val, id){
-      console.log('store currency', curr, val, id)
       client.zadd("productPrice."+curr+'.index', parseFloat(val.split(",").join("")).toFixed(2), id, function(err, res){
-        console.log("val to display", curr, val.split(",").join(""));
+        // console.log("val to display", curr, val.split(",").join(""));
         if(err){
           console.log('create product currency index for', id,  "resulted in err", err);
         }      
       });
     };
     for(var curr in product.master.prices){
-      console.log('curr', curr, 'val', product.master.prices[curr])
+      // console.log('curr', curr, 'val', product.master.prices[curr])
       switch(curr){
         case "INR" : store_currency("INR", product.master.prices["INR"].split("\u20B9")[1], product.id);
                      break;
