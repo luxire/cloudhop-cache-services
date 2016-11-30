@@ -2,8 +2,8 @@
 
 module.exports = {
   spree: {
-    host: 'http://52.163.215.99', //Spree store-Host Url
-    // host: 'https://test.store.luxire.com', //Spree store-Host Url
+    host: 'http://luxire-store.stage.cloudhop.in', //Spree store-Host Url for dev
+    // host: 'https://luxire-store.cloudhop.in', //Spree store-Host Url for prod
     products: '/api/products',
     customerProducts: '/customized_taxons/get_taxon_details.json' 
 
