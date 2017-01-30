@@ -2,6 +2,8 @@
 var redis = require('redis');
 var client = redis.createClient();
 var colors = require('./colors');
+var Promise = require("es6-promise").Promise;
+
 client.on('connect', function(){
    console.log('Connected to redis:for:search');
  });
@@ -97,7 +99,7 @@ client.on('connect', function(){
    };
   //  console.log('key to store', key_to_store);
     client.zadd("productSearch", product.id, key_to_store, function(err, res){
-      if(res === 0){
+      if(err){
         console.log('create product index for', product.name, "with id",product.id, "resulted in err", err);
       }      
     });
@@ -137,4 +139,49 @@ client.on('connect', function(){
         
       }
     }
+ };
+ 
+ var supported_currencies = ["INR", "USD", "EUR", "AUD", "SGD", "NOK", "DKK", "SEK", "CHF", "GBP", "CAD"];
+ 
+ exports.deleteIndex = function(product){//returns a promise
+   return new Promise(function(resolve, reject){
+     client.zscan("productSearch", "0", "count", "10000000", "match", "id::"+product.id+"*", function(err, res){
+        if(res && res[1] && res[1].length){
+          client.zrem("productSearch", res[1][0], function(err, res){
+            if(err){
+              reject({"msg": err});
+              console.log("Error updating product with id ", product.id);
+            }
+            else if(res){
+              for(var i=0;i<supported_currencies.length;i++){
+                (function(currency){
+                  client.zrem("productPrice."+currency+".index", product.id, function(err, res){
+                    if(err){
+                      console.log("Error deleting price in "+ currency +" for product with id ", product.id)
+                    }
+                  })
+                })(supported_currencies[i]);
+              }
+              resolve(product);
+            }
+          })
+        }
+      else{
+        console.log('Product with id '+product.id+ ' not found, hence will be created' );
+        reject({"msg": "not found", "status": 404})
+      }
+    });
+   });
+ };
+ exports.updateIndex = function(product){
+   var scope = this;
+   this.deleteIndex(product).then(function(product){
+    console.log("timestamp @product deleted", Date.now())
+     scope.createIndex(product)
+   }, function(error){
+     console.log("Failed to update", error)
+     if(error.status == 404){
+      scope.createIndex(product);
+     }
+   });
  };
