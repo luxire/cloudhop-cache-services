@@ -4,6 +4,8 @@ var controller = require('./product.controller');
 var router = express.Router();
 
 router.get('/:id', controller.show);//fetch search results
+router.post('/sync', controller.sync);
+
 // router.delete('/:id', controller.delete);
 
 // router.put('/:id', controller.update);

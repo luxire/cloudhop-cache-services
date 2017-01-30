@@ -2,6 +2,10 @@
 var redis =  require('redis');
 var client = redis.createClient();
 var lodash = require('lodash');
+var http = require('request');
+var constants = require('../../config/constant');
+var product_search = require('../../search/products');
+
 exports.show = function(req, res){
   console.log("id is: ",req.params.id);
   var stringToSearch = "";
@@ -38,3 +42,25 @@ exports.show = function(req, res){
     // }
   });
 }
+
+exports.sync = function(req, res){
+    console.log("timestamp @received", Date.now())
+    var product_ids = req.body.ids;//expecting array of ids
+    http.get({
+       uri:  constants.spree.host+constants.spree.products+'?per_page='+product_ids.length+'&ids='+product_ids.toString()
+    }, function(err, response, body){
+        if(err){
+            console.log(err);
+            res.status(500).send(error.syscall);
+        }
+        else{
+            console.log("timestamp @product fetched", Date.now())
+            var products = JSON.parse(body).products;
+            for(var i=0;i<products.length;i++){
+                product_search.updateIndex(products[i]);
+            };
+            res.status(200).send("Sync in progress..");
+        }
+    });
+    
+};

@@ -2,6 +2,11 @@
 var redis =  require('redis');
 var client = redis.createClient();
 var lodash = require('lodash');
+var http = require('request');
+var constants = require('../../config/constant');
+var product_search = require('../../search/products');
+
+
 var MyEventEmitter = require('events').EventEmitter;
 
 var input_params = ['id', 'name', 'taxonomy', 'color', 'weave_type', 'pattern', 'transparency', 'wrinkle_resistance', 'season', 'brand', 'no_of_color'];
@@ -19,7 +24,6 @@ var color_mapping = {
 
 exports.products = function(req, res){
     var myEventEmitter = new MyEventEmitter();
-    console.log('req body', req.body);
     var multiple_scan = {};
     var output_multi_arr = {};
     var temp1 = [];
@@ -86,7 +90,7 @@ exports.products = function(req, res){
     // var page = parseInt(req.query.q["page"]) || 1;
     // var name_cont = req.query.q["name_cont"] || '';
     // var taxonomy = req.query.q["taxonomy"] || '*';
-    var per_page = 15;
+    var per_page = parseInt(request["per_page"]) || 15;
     var response = res;
     var response_object = {
         count: 0,
@@ -248,4 +252,29 @@ exports.products = function(req, res){
         }
     });
 
+
+
+};
+
+
+exports.sync = function(req, res){
+    console.log("timestamp @received", Date.now(), "body", req.body);
+    var product_ids = JSON.parse(req.body).ids;//expecting array of ids
+    http.get({
+       uri:  constants.spree.host+constants.spree.products+'?per_page='+product_ids.length+'&ids='+product_ids.toString()
+    }, function(err, response, body){
+        if(err){
+            console.log(err);
+            res.status(500).send(error.syscall);
+        }
+        else{
+            console.log("timestamp @product fetched", Date.now())
+            var products = JSON.parse(body).products;
+            for(var i=0;i<products.length;i++){
+                product_search.updateIndex(products[i]);
+            };
+            res.status(200).send("Sync in progress..");
+        }
+    });
+    
 };
