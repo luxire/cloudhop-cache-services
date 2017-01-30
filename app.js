@@ -8,6 +8,8 @@ var compression = require('compression');
 
 var routes = require('./routes/index');
 var users = require('./routes/users');
+process.env.NODE_ENV = process.env.NODE_ENV || 'development';
+
 
 var app = express();
 
@@ -48,7 +50,7 @@ var cfg = {
 }
 
 server.listen(cfg.port, cfg.ip, function () {
-  console.log('Express server listening on port :%d ', cfg.port);
+  console.log('Express server listening on port :%d ', cfg.port, ' in ', app.get('env'), ' mode');
 });
 
 
