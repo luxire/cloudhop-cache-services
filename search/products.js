@@ -30,7 +30,7 @@ client.on('connect', function(){
      'season': 'luxire_product.suitable_climates',
      'brand': 'luxire_product.mill',
      'no_of_color': 'luxire_product.no_of_color',
-     'type': 'luxire_product.product_weave_type + luxire_product.composition'    
+     'material_and_weave_type': 'luxire_product.product_weave_type + luxire_product.composition'    
    },
    range: {
      
@@ -90,10 +90,10 @@ client.on('connect', function(){
    
    var key_to_store = "";
    for(var key in search_properties.filter){
-     if(key !== 'color' && key !== 'type'){
+     if(key !== 'color' && key !== 'material_and_weave_type'){
        key_to_store += key+"::" + process_value_to_store(product, search_properties.filter[key]) + ":-:";
      }
-     else if(key === 'type'){
+     else if(key === 'material_and_weave_type'){
       let keys = search_properties.filter[key].split("+");
       let valueToStore = "";
       for(let i=0; i<keys.length; i++){
