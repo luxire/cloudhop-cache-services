@@ -9,7 +9,7 @@ var product_search = require('../../search/products');
 
 var MyEventEmitter = require('events').EventEmitter;
 
-var input_params = ['id', 'name', 'taxonomy', 'color', 'weave_type', 'pattern', 'transparency', 'wrinkle_resistance', 'season', 'brand', 'no_of_color', 'type'];
+var input_params = ['id', 'name', 'taxonomy', 'color', 'weave_type', 'pattern', 'transparency', 'wrinkle_resistance', 'season', 'brand', 'no_of_color', 'material_and_weave_type'];
 var color_mapping = {
     'white': "white,cream,yellow",
     'pink': "pink,purple,violet",
