@@ -82,12 +82,16 @@ exports.getAllProducts = function (req, res) {
         let parsedObject = {};
         for (let res of response) {
           parsedObject = JSON.parse(res);
-          let eachObject = {};
-          eachObject.id = parsedObject.id;
-          eachObject.name = parsedObject.name;
-          eachObject.url = parsedObject.master.images[0].small_url;
-          responseArray.push(eachObject);
+          if(parsedObject !== null) {
+            let eachObject = {};
+            eachObject.id = parsedObject.id;
+            eachObject.name = parsedObject.name;
+            eachObject.url = parsedObject.master.images[0].small_url;
+            responseArray.push(eachObject);
+          } else {
+           console.error("Redis: Unable to find product ", res);
         }
+      }
         res.json(responseArray);
       }
     })
