@@ -91,9 +91,36 @@ exports.getAllProducts = function (req, res) {
         res.json(responseArray);
       }
     })
-  }else{
-    let responseMsg = {msg: "Please provide product id"};
+  } else {
+    let responseMsg = { msg: "Please provide product id" };
     res.status(422).send(JSON.stringify(responseMsg));
   }
 
+}
+
+exports.updateRedis = function (req, res) {
+  let product = JSON.parse(req.body.product);
+  client.set("products:" + product.id, JSON.stringify(product), function (err, reply) {
+    if (err) {
+      console.log(`Error while updating redis. Reason is ${err}`);
+      res.status(500).json("Error updating Redis");
+    } else {
+      product_search.deleteIndex(product).then(function (product) {
+        product_search.createIndex(product);
+        console.log(`${product.name} is updated successfully in redis`);
+        res.status(200).json("Redis Updated sucessfully");
+      }, function (error) {
+        console.log("Failed to update", error);
+        if (error.status == 404) {
+          product_search.createIndex(product);
+          console.log(`${product.name} is updated successfully in redis`);
+          res.status(200).json("Redis Updated sucessfully");
+        } else {
+          console.log(`Error while updating redis. Reason is ${error}`);
+          res.status(500).json("Error updating Redis");
+        }
+      });
+      product_search.updateIndex(product);
+    }
+  })
 }
