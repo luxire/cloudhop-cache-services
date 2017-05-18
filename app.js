@@ -22,7 +22,10 @@ app.use(compression());
 // uncomment after placing your favicon in /public
 //app.use(favicon(__dirname + '/public/favicon.ico'));
 app.use(logger('dev'));
-app.use(bodyParser.json());
+
+// Increased the limit of JSON parse to 5mb. Done by Manish
+app.use(bodyParser.json({limit: '5mb'}));
+
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
