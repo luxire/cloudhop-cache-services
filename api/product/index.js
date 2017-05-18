@@ -6,6 +6,7 @@ var router = express.Router();
 router.get('/getProducts', controller.getAllProducts);
 router.get('/:id', controller.show);//fetch search results
 router.post('/sync', controller.sync);
+router.post('/update', controller.updateRedis);
 
 
 // router.delete('/:id', controller.delete);
