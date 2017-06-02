@@ -136,7 +136,9 @@ exports.products = function (req, res) {
             redis_res[i] = "products:" + redis_res[i];
                 }
         client.mget(redis_res, function(error, reply){
-        redis_res = filterProductsBasedOnPublishDate(reply);
+        if(redis_res.length !== 0){
+          redis_res = filterProductsBasedOnPublishDate(reply);
+        }
         var productIds = [];
         var products = [];
         response_object.total_count = redis_res.length;
