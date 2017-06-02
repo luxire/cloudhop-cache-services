@@ -1,6 +1,9 @@
 'use strict';
 var redis = require('redis');
-var client = redis.createClient();
+var path = require('path');
+var constantFilePath =  path.resolve(process.cwd(), 'config', 'constant.js');
+var env = require(constantFilePath);
+var client = redis.createClient(env.redisConf);
 var lodash = require('lodash');
 var http = require('request');
 var constants = require('../../config/constant');

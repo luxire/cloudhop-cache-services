@@ -1,6 +1,9 @@
 'use strict';
 var redis = require('redis');
-var client = redis.createClient();
+var path = require('path');
+var constantFilePath =  path.resolve(process.cwd(), 'config', 'constant.js');
+var env = require(constantFilePath);
+var client = redis.createClient(env.redisConf);
 var colors = require('./colors');
 var Promise = require("es6-promise").Promise;
 

@@ -15,9 +15,12 @@ var fs = require('fs');
 var http = require('request');
 var redis =  require('redis');
 var querystring = require('querystring');
+// var env = require('./config/constant');
 
 
-var client = redis.createClient();
+var constantFilePath =  path.resolve(process.cwd(), 'config', 'constant.js');
+var env = require(constantFilePath);
+var client = redis.createClient(env.redisConf);
 console.log("I am in redis_server.js page ");
 
  client.on('connect', function(){
