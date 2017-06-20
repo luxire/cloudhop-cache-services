@@ -21,6 +21,7 @@ var querystring = require('querystring');
 var constantFilePath =  path.resolve(process.cwd(), 'config', 'constant.js');
 var env = require(constantFilePath);
 var client = redis.createClient(env.redisConf);
+client.auth(process.env.NODE_REDIS_PASSWORD);
 console.log("I am in redis_server.js page ");
 
  client.on('connect', function(){
