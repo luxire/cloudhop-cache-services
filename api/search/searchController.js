@@ -1,7 +1,7 @@
 'use strict';
 var redis = require('redis');
 var path = require('path');
-var constantFilePath =  path.resolve(process.cwd(), 'config', 'constant.js');
+var constantFilePath = path.resolve(process.cwd(), 'config', 'constant.js');
 var env = require(constantFilePath);
 var client = redis.createClient(env.redisConf);
 client.auth(process.env.NODE_REDIS_PASSWORD);
@@ -133,38 +133,38 @@ exports.products = function (req, res) {
     };
 
     var compute_response = function (redis_res) {
-        for(var i=0; i < redis_res.length; i++){
+        for (var i = 0; i < redis_res.length; i++) {
             redis_res[i] = "products:" + redis_res[i];
-                }
-        client.mget(redis_res, function(error, reply){
-        if(redis_res.length !== 0){
-          redis_res = filterProductsBasedOnPublishDate(reply);
         }
-        var productIds = [];
-        var products = [];
-        response_object.total_count = redis_res.length;
-        response_object.pages = (response_object.total_count % per_page) == 0 ? (response_object.total_count / per_page) : parseInt(response_object.total_count / per_page) + 1;
-        var start = (page - 1) * (per_page);
-        var end = (page * per_page) - 1;
-        for (var i = start; i <= end && redis_res[i]; i++) {
-            productIds.push(redis_res[i]);
-            response_object.count++;
-        };
+        client.mget(redis_res, function (error, reply) {
+            if (redis_res.length !== 0) {
+                redis_res = filterProductsBasedOnPublishDate(reply);
+            }
+            var productIds = [];
+            var products = [];
+            response_object.total_count = redis_res.length;
+            response_object.pages = (response_object.total_count % per_page) == 0 ? (response_object.total_count / per_page) : parseInt(response_object.total_count / per_page) + 1;
+            var start = (page - 1) * (per_page);
+            var end = (page * per_page) - 1;
+            for (var i = start; i <= end && redis_res[i]; i++) {
+                productIds.push(redis_res[i]);
+                response_object.count++;
+            };
 
-        if (productIds.length) {
-            myEventEmitter.once('fetched-products', function (products) {
-                response_object.products = products;
-                response_object.taxonomies = taxonomies;
-                // console.log('response', response_object.length);
+            if (productIds.length) {
+                myEventEmitter.once('fetched-products', function (products) {
+                    response_object.products = products;
+                    response_object.taxonomies = taxonomies;
+                    // console.log('response', response_object.length);
 
+                    response.json(response_object);
+                });
+                fetchProduct(0, productIds, products);
+            }
+            else {
+                // console.log('response', response_object);
                 response.json(response_object);
-            });
-            fetchProduct(0, productIds, products);
-        }
-        else {
-            // console.log('response', response_object);
-            response.json(response_object);
-        }
+            }
         })
     };
     function filterProductsBasedOnPublishDate(products) {
@@ -173,9 +173,11 @@ exports.products = function (req, res) {
         var publishDate;
         products.forEach(function (product) {
             product = JSON.parse(product);
-            publishDate = new Date(product.available_on);
-            if (publishDate <= currentDate) {
-                filteredProducts.push(product.id)
+            if (product) {
+                publishDate = new Date(product.available_on);
+                if (publishDate <= currentDate) {
+                    filteredProducts.push(product.id)
+                }
             }
         })
         return filteredProducts;
