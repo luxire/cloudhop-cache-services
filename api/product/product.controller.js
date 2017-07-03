@@ -1,10 +1,10 @@
 'use strict';
 var redis = require('redis');
 var path = require('path');
-var constantFilePath =  path.resolve(process.cwd(), 'config', 'constant.js');
+var constantFilePath = path.resolve(process.cwd(), 'config', 'constant.js');
 var env = require(constantFilePath);
 var client = redis.createClient(env.redisConf);
-client.auth( process.env.NODE_REDIS_PASSWORD);
+client.auth(process.env.NODE_REDIS_PASSWORD);
 var lodash = require('lodash');
 var http = require('request');
 var constants = require('../../config/constant');
@@ -61,7 +61,15 @@ exports.sync = function (req, res) {
       console.log("timestamp @product fetched", Date.now())
       var products = JSON.parse(body).products;
       for (var i = 0; i < products.length; i++) {
-        product_search.updateIndex(products[i]);
+        let product = products[i];
+        client.set("products:" + product.id, JSON.stringify(product), function (err, res) {
+          if (err) {
+            console.log("error in updating products in redis server for id: ", product.id);
+          } else {
+            console.log("product updated sucessfully in redis server for id: ", product.id);
+            product_search.updateIndex(product);
+          }
+        });
       };
       res.status(200).send("Sync in progress..");
     }
@@ -86,16 +94,16 @@ exports.getAllProducts = function (req, res) {
         let parsedObject = {};
         for (let res of response) {
           parsedObject = JSON.parse(res);
-          if(parsedObject !== null) {
+          if (parsedObject !== null) {
             let eachObject = {};
             eachObject.id = parsedObject.id;
             eachObject.name = parsedObject.name;
             eachObject.url = parsedObject.master.images[0].small_url;
             responseArray.push(eachObject);
           } else {
-           console.error("Redis: Unable to find product ", res);
+            console.error("Redis: Unable to find product ", res);
+          }
         }
-      }
         res.json(responseArray);
       }
     })
