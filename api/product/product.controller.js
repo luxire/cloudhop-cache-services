@@ -71,9 +71,9 @@ exports.sync = function (req, res) {
           }
         });
       };
-      res.status(200).send("Sync in progress..");
     }
   });
+  res.status(200).send("Sync in progress..");
 
 };
 
