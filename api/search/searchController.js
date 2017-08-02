@@ -27,6 +27,9 @@ var color_mapping = {
 
 
 exports.products = function (req, res) {
+    if(req.body.name && req.body.name.includes(" ")){
+        req.body.name = req.body.name.split(" ").toString();
+    }
     var myEventEmitter = new MyEventEmitter();
     var multiple_scan = {};
     var output_multi_arr = {};
